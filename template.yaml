@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  lambda-activity
+
+  Sample SAM Template for lambda-activity
+
+Resources:
+  ActivityStateMachine:
+    Type: AWS::Serverless::StateMachine 
+    Properties:
+      DefinitionUri: statemachine/stock_trader.asl.json
+      DefinitionSubstitutions:
+        StateAcitivityArn: !Ref StateAcitivity
+      Policies: 
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ActivityStateFunction
+
+  StateAcitivity:
+    Type: AWS::StepFunctions::Activity
+    Properties: 
+      Name: StateAcitivity
+
+  ActivityStateFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: functions/activity/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Timeout: 30
+      Role: !GetAtt ActivityStateFunctionRole.Arn
+      Environment:
+        Variables:
+          ACTIVITY_NAME: StateAcitivity
+
+
+
+  ActivityStateFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: "activity-state-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "states:*"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+
+
+Outputs:
+  ActivityStateMachineArn:
+    Description: "Activity State machine ARN"
+    Value: !Ref ActivityStateMachine
+  ActivityStateMachineRoleArn:
+    Description: "IAM Role created for Activity State machine based on the specified SAM Policy Templates"
+    Value: !GetAtt ActivityStateMachineRole.Arn
